@@ -1,0 +1,187 @@
+-- Creating the initial table to add csv file data to
+
+
+CREATE TABLE public.housing
+	(Unique_id numeric,
+	 ParcelID varchar,
+	 LandUse varchar,
+	 Property_address varchar,
+	 SaleDate date,
+	 SalePrice varchar,
+	 Legal_ref varchar,
+	 Sold_as_Vacant varchar,
+	 Owner_name varchar,
+	 Owner_address varchar,
+	 acreage numeric,
+	 Tax_district varchar,
+	 Land_value numeric,
+	 Building_value numeric,
+	 total_value numeric,
+	 year_built varchar,
+	 bedrooms numeric,
+	 full_bath numeric,
+	 half_bath numeric
+)
+
+
+-- USING SELECT * to test table
+SELECT * 
+FROM housing
+
+-- Property Address, finding null values
+
+SELECT *
+FROM housing
+WHERE property_address is null
+
+
+-- By ordering by ParcelId we can see there are duplicates
+-- So parcelid will be the same as address, so if there is a null in the property address, we can use the parcelid
+SELECT *
+FROM housing
+ORDER BY parcelid
+
+-- Create a self-join in order to create the new table populated with filled property address where there were previously nulls
+SELECT a.parcelid, a.property_address, b. parcelid, b.property_address
+FROM housing AS a
+JOIN housing AS b
+	ON a.parcelid = b.parcelid
+	AND a.unique_id <> b.unique_id
+  WHERE a.property_address is null
+ 
+
+-- showing what the newly populated property address would look like
+SELECT a.parcelid, a.property_address, b. parcelid, b.property_address, COALESCE(a.property_address, b.property_address)
+FROM housing AS a
+JOIN housing AS b
+	ON a.parcelid = b.parcelid
+	AND a.unique_id <> b.unique_id
+WHERE a.property_address is null
+
+-- Using the UPDATE function to fill in previous nulls in table, and then using the previous JOIN query again to check for no missing nulls
+UPDATE housing AS h1
+SET property_address = h2.property_address
+FROM housing AS h2
+WHERE h1.parcelid = h2.parcelid AND h1.unique_id <> h2.unique_id
+  AND h1.property_address IS NULL AND h2.property_address IS NOT NULL
+
+SELECT a.parcelid, a.property_address, b. parcelid, b.property_address, COALESCE(a.property_address, b.property_address)
+FROM housing AS a
+JOIN housing AS b
+	ON a.parcelid = b.parcelid
+	AND a.unique_id <> b.unique_id
+WHERE a.property_address is null
+  
+  
+--Breaking out property address into individual columns
+
+-- Using Split_PART to split the address and city on the comma delimeter 
+
+SELECT property_address, SPLIT_PART(property_address,',',1) AS address,
+SPLIT_PART(property_address,',',2) AS city
+FROM housing
+
+-- Updating table with newly split address and city
+ALTER TABLE housing
+	ADD property_split_address varchar
+
+UPDATE housing
+	SET property_split_address = SPLIT_PART(property_address,',',1)
+	
+ALTER TABLE housing
+	ADD property_split_city varchar
+
+UPDATE housing
+	SET property_split_city = SPLIT_PART(property_address,',',2)
+
+-- Repeating the process of SPLIT_PART for owner address
+
+ALTER TABLE housing
+	ADD owner_split_address varchar,
+	ADD owner_split_city varchar
+  
+UPDATE housing
+	SET owner_split_address = SPLIT_PART(owner_address,',',1)
+  
+UPDATE housing
+	SET owner_split_city = SPLIT_PART(owner_address,',',2)
+  
+-- Using DISTINCT to check that the column sold_as_vacant could be consolidated from 4 choices (Y, N, Yes, and No) to 2 options (Yes and No)
+SELECT DISTINCT(sold_as_vacant)
+FROM housing
+
+SELECT sold_as_vacant,
+	CASE WHEN sold_as_vacant = 'Y' THEN 'Yes'
+		WHEN sold_as_vacant = 'N' THEN 'No'
+		ELSE sold_as_vacant
+		END
+FROM housing
+
+-- Updating the housing table with changes to sold_as_vacant column
+UPDATE housing
+SET sold_as_vacant = CASE WHEN sold_as_vacant = 'Y' THEN 'Yes'
+		WHEN sold_as_vacant = 'N' THEN 'No'
+		ELSE sold_as_vacant
+		END
+
+-- verifying that there are only 2 distinct anser choices for the column sold_as_vacant
+SELECT DISTINCT(sold_as_vacant)
+FROM housing
+
+-- removing duplicates
+-- Creating a temp table with a PARTITION BY statement to display where there are duplicates within the data. A row that matches on parcelid, property_address, 
+salesprice, saledate and legal_ref will most likiely be the same data and the duplicate should be removed from the table. If the row_num is greater than 1, 
+that data is the duplicate
+
+
+
+
+-- double check below
+WITH RowNumCTE AS (
+SELECT *, 
+	ROW_NUMBER() OVER(
+	PARTITION BY parcelid, property_address, saleprice, saledate, legal_ref
+	ORDER BY 
+		unique_id) AS row_num
+FROM housing)
+
+SELECT *
+FROM RowNumCTE
+WHERE row_num > 1
+ORDER BY property_address
+
+
+
+
+
+
+-- Removing unnecessary columns, owner_address and poperty_address, because we split them previously
+ALTER TABLE housing
+  DROP COLUMN owner_address, 
+  DROP COLUMN property_address
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
