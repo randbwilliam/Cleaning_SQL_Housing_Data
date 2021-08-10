@@ -50,14 +50,6 @@ JOIN housing AS b
   WHERE a.property_address is null
  
 
--- showing what the newly populated property address would look like
-SELECT a.parcelid, a.property_address, b. parcelid, b.property_address, COALESCE(a.property_address, b.property_address)
-FROM housing AS a
-JOIN housing AS b
-	ON a.parcelid = b.parcelid
-	AND a.unique_id <> b.unique_id
-WHERE a.property_address is null
-
 -- Using the UPDATE function to fill in previous nulls in table, and then using the previous JOIN query again to check for no missing nulls
 UPDATE housing AS h1
 SET property_address = h2.property_address
