@@ -128,37 +128,56 @@ SET sold_as_vacant = CASE WHEN sold_as_vacant = 'Y' THEN 'Yes'
 SELECT DISTINCT(sold_as_vacant)
 FROM housing
 
--- removing duplicates
--- Creating a temp table with a PARTITION BY statement to display where there are duplicates within the data. A row that matches on parcelid, property_address, 
-salesprice, saledate and legal_ref will most likiely be the same data and the duplicate should be removed from the table. If the row_num is greater than 1, 
-that data is the duplicate
-
-
-
-
--- double check below
-WITH RowNumCTE AS (
-SELECT *, 
-	ROW_NUMBER() OVER(
-	PARTITION BY parcelid, property_address, saleprice, saledate, legal_ref
-	ORDER BY 
-		unique_id) AS row_num
-FROM housing)
-
-SELECT *
-FROM RowNumCTE
-WHERE row_num > 1
-ORDER BY property_address
-
-
-
-
-
 
 -- Removing unnecessary columns, owner_address and poperty_address, because we split them previously
 ALTER TABLE housing
   DROP COLUMN owner_address, 
   DROP COLUMN property_address
+  
+-- removing duplicates
+-- Creating PARTITION BY statement to display where there are duplicates within the data. A row that matches on parcelid, property_address, 
+salesprice, saledate and legal_ref will most likiely be the same data and the duplicate should be removed from the table. If the row_num is greater than 1, 
+that data is the duplicate
+
+DELETE FROM housing
+WHERE parcelid IN
+    (SELECT parcelid
+    FROM 
+        (SELECT *,
+         ROW_NUMBER() OVER( PARTITION BY parcelid, saleprice, saledate, legal_ref
+        ORDER BY  parcelid ) AS row_num
+        FROM housing ) h
+        WHERE h.row_num > 1 )
+
+  
+-- creating a new table for the clean data
+CREATE TABLE housing_clean
+(Unique_id numeric,
+	 ParcelID varchar,
+	 LandUse varchar,
+	 SaleDate date,
+	 SalePrice varchar,
+	 Legal_ref varchar,
+	 Sold_as_Vacant varchar,
+	 Owner_name varchar,
+	 acreage numeric,
+	 Tax_district varchar,
+	 Land_value numeric,
+	 Building_value numeric,
+	 total_value numeric,
+	 year_built varchar,
+	 bedrooms numeric,
+	 full_bath numeric,
+	 half_bath numeric,
+ 	 row_num varchar
+)
+
+
+INSERT into housing_clean
+SELECT unique_id, parcelid, landuse, saledate, saleprice, legal_ref, sold_as_vacant, owner_name, acreage,
+	 tax_district, land_value, building_value, total_value, year_built, bedrooms, full_bath,
+	 half_bath
+FROM housing
   
   
   
